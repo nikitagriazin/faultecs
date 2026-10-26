@@ -1,0 +1,6 @@
+/build/
+/.repowise/
+*.exe
+*.obj
+*.pdb
+__pycache__/
