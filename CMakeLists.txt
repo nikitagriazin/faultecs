@@ -1,0 +1,36 @@
+cmake_minimum_required(VERSION 3.20)
+project(ecs_fault_lab LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+file(GLOB GENERATED_UNITS CONFIGURE_DEPENDS generated/unit_*.cpp)
+add_library(ecs_workload STATIC ${GENERATED_UNITS} generated/registry.cpp)
+target_include_directories(ecs_workload PUBLIC include generated)
+
+add_executable(ecs_demo src/main.cpp)
+target_link_libraries(ecs_demo PRIVATE ecs_workload)
+
+add_executable(ecs_faults src/faults.cpp)
+target_include_directories(ecs_faults PRIVATE include)
+find_package(Threads REQUIRED)
+target_link_libraries(ecs_faults PRIVATE Threads::Threads)
+
+add_executable(ecs_tests tests/world_tests.cpp)
+target_include_directories(ecs_tests PRIVATE include)
+add_executable(ecs_link_tests tests/link_graph_tests.cpp)
+target_include_directories(ecs_link_tests PRIVATE include)
+enable_testing()
+add_test(NAME world_tests COMMAND ecs_tests)
+add_test(NAME link_graph_tests COMMAND ecs_link_tests)
+add_test(NAME demo_smoke COMMAND ecs_demo 1 4)
+
+option(FAULTLAB_SANITIZERS "Enable address and undefined behavior sanitizers" OFF)
+if(FAULTLAB_SANITIZERS)
+    if(MSVC)
+        target_compile_options(ecs_faults PRIVATE /fsanitize=address /Zi)
+    else()
+        target_compile_options(ecs_faults PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer -g)
+        target_link_options(ecs_faults PRIVATE -fsanitize=address,undefined)
+    endif()
+endif()
